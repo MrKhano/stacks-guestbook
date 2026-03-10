@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { connect, request } from "@stacks/connect";
 import { Cl, cvToHex, cvToValue, hexToCV } from "@stacks/transactions";
 
@@ -10,6 +10,12 @@ type GuestbookMessage = {
   text: string;
 };
 
+type TxResultLike = {
+  txid?: string;
+  txId?: string;
+  transactionId?: string;
+};
+
 export default function HomePage() {
   const [contractAddress, setContractAddress] = useState(
     "SP331YXD9ZA5V9VS4P3XTQ5DAFA9G6VQ7FV95ZRXY"
@@ -17,15 +23,22 @@ export default function HomePage() {
   const [contractName, setContractName] = useState("guestbook");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("");
+  const [txLink, setTxLink] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<GuestbookMessage[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isConnectedWallet, setIsConnectedWallet] = useState(false);
 
-  const contractId = `${contractAddress.trim()}.${contractName.trim()}`;
+  const contractId = useMemo(
+    () =>
+      `${contractAddress.trim()}.${contractName.trim()}` as `${string}.${string}`,
+    [contractAddress, contractName]
+  );
 
   async function handleConnect() {
     try {
       setStatus("");
+      setTxLink("");
       setIsLoading(true);
 
       await connect({
@@ -33,6 +46,7 @@ export default function HomePage() {
         network: "mainnet",
       });
 
+      setIsConnectedWallet(true);
       setStatus("Wallet connected. You can now send a message.");
     } catch (error: any) {
       console.error("CONNECT ERROR:", error);
@@ -44,12 +58,10 @@ export default function HomePage() {
 
   async function loadMessages() {
     try {
-      if (!contractAddress.trim() || !contractName.trim()) {
-        return;
-      }
+      if (!contractAddress.trim() || !contractName.trim()) return;
 
       setIsLoadingMessages(true);
-      setStatus("");
+      setStatus((prev) => prev);
 
       const countResponse = await fetch(
         `https://api.hiro.so/v2/contracts/call-read/${contractAddress.trim()}/${contractName.trim()}/get-message-count`,
@@ -101,16 +113,12 @@ export default function HomePage() {
         const msgData = await msgResponse.json();
         console.log(`MESSAGE ${i}:`, msgData);
 
-        if (!msgData?.okay || !msgData?.result) {
-          continue;
-        }
+        if (!msgData?.okay || !msgData?.result) continue;
 
         const msgCV = hexToCV(msgData.result);
         const msgValue: any = cvToValue(msgCV);
 
-        if (msgValue?.type === "(optional none)") {
-          continue;
-        }
+        if (msgValue?.type === "(optional none)") continue;
 
         const value = msgValue?.value;
 
@@ -135,6 +143,7 @@ export default function HomePage() {
   async function handleSendMessage() {
     try {
       setStatus("");
+      setTxLink("");
 
       if (!contractAddress.trim()) {
         setStatus("Please enter a contract address.");
@@ -158,25 +167,23 @@ export default function HomePage() {
 
       setIsLoading(true);
 
-      const result = await request("stx_callContract", {
+      const result = (await request("stx_callContract", {
         contract: contractId,
         functionName: "add-message",
         functionArgs: [Cl.stringAscii(message.trim())],
-        network: "testnet",
-      });
+        network: "mainnet",
+      })) as TxResultLike;
 
       console.log("SEND RESULT:", result);
 
-      const txid =
-        (result as any)?.txid ||
-        (result as any)?.txId ||
-        (result as any)?.transactionId;
+      const txid = result?.txid || result?.txId || result?.transactionId || "";
 
-      setStatus(
-        txid
-          ? `Transaction submitted: ${txid}`
-          : "Transaction submitted successfully."
-      );
+      if (txid) {
+        setStatus("Transaction submitted successfully.");
+        setTxLink(`https://explorer.hiro.so/txid/${txid}?chain=mainnet`);
+      } else {
+        setStatus("Transaction submitted successfully.");
+      }
 
       setMessage("");
 
@@ -187,9 +194,7 @@ export default function HomePage() {
       console.error("SEND ERROR:", error);
 
       if (error?.message === "User rejected request") {
-        setStatus(
-          "The wallet rejected the transaction. Please approve the Leather popup and make sure Leather is on testnet."
-        );
+        setStatus("Transaction rejected in Leather.");
       } else {
         setStatus(error?.message || "Transaction failed.");
       }
@@ -206,13 +211,21 @@ export default function HomePage() {
     <main className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-orange-100 text-neutral-900">
       <div className="mx-auto max-w-4xl px-6 py-10">
         <div className="mb-8 rounded-3xl border border-orange-200 bg-white/90 p-8 shadow-xl">
-          <h1 className="text-4xl font-bold tracking-tight text-orange-600">
-            Stacks Guestbook
-          </h1>
-          <p className="mt-3 text-base text-neutral-600">
-            Connect your wallet and publish a message to your Stacks testnet
-            guestbook contract.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight text-orange-600">
+                Stacks Guestbook
+              </h1>
+              <p className="mt-3 text-base text-neutral-600">
+                Connect your wallet and publish a message to your Stacks mainnet
+                guestbook contract.
+              </p>
+            </div>
+
+            <div className="rounded-full bg-orange-100 px-4 py-2 text-sm font-medium text-orange-700">
+              {isConnectedWallet ? "Wallet connected" : "Mainnet"}
+            </div>
+          </div>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
@@ -231,7 +244,7 @@ export default function HomePage() {
                   value={contractAddress}
                   onChange={(e) => setContractAddress(e.target.value)}
                   className="w-full rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm outline-none transition focus:border-orange-400"
-                  placeholder="ST..."
+                  placeholder="SP..."
                 />
               </div>
 
@@ -294,6 +307,16 @@ export default function HomePage() {
               {status && (
                 <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
                   <p className="break-all text-sm text-neutral-700">{status}</p>
+                  {txLink && (
+                    <a
+                      href={txLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-sm font-medium text-orange-600 underline"
+                    >
+                      View transaction on Hiro Explorer
+                    </a>
+                  )}
                 </div>
               )}
 
