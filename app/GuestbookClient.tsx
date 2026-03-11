@@ -58,7 +58,7 @@ export default function GuestbookClient() {
       const result = await request("stx_callContract", {
         contract: `${contractAddress}.${contractName}`,
         functionName: "add-message",
-        functionArgs: [stringAsciiCV(message.trim())]
+        functionArgs: [stringAsciiCV(message.trim())],
         network: "mainnet",
       });
 
