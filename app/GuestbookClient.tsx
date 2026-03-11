@@ -27,8 +27,8 @@ export default function GuestbookClient() {
 
       setStatus("Wallet connected.");
     } catch (error) {
-      console.error("Connect error:", error);
-      setStatus("Connection failed or request rejected.");
+      console.error(error);
+      setStatus("Connection failed.");
     } finally {
       setIsBusy(false);
     }
@@ -43,12 +43,14 @@ export default function GuestbookClient() {
       const contractName = process.env.NEXT_PUBLIC_CONTRACT_NAME;
 
       if (!contractAddress || !contractName) {
-        setStatus("Missing contract environment variables.");
+        setStatus("Missing contract variables.");
         return;
       }
 
-      if (!message.trim()) {
-        setStatus("Please enter a message.");
+      const trimmed = message.trim();
+
+      if (!trimmed) {
+        setStatus("Enter a message.");
         return;
       }
 
@@ -58,15 +60,16 @@ export default function GuestbookClient() {
       const result = await request("stx_callContract", {
         contract: `${contractAddress}.${contractName}`,
         functionName: "add-message",
-        functionArgs: [stringAsciiCV(message.trim())],
+        functionArgs: [stringAsciiCV(trimmed)],
         network: "mainnet",
       });
 
-      console.log("Transaction result:", result);
+      console.log(result);
+
       setStatus("Transaction submitted.");
       setMessage("");
     } catch (error) {
-      console.error("Transaction error:", error);
+      console.error(error);
       setStatus("Transaction failed.");
     } finally {
       setIsBusy(false);
@@ -75,44 +78,59 @@ export default function GuestbookClient() {
 
   if (!mounted) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6">
-        <p>Loading guestbook...</p>
-      </main>
+      <div className="min-h-screen flex items-center justify-center bg-black text-orange-400">
+        Loading...
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen p-6">
-      <h1 className="text-3xl font-bold mb-6">Stacks Guestbook</h1>
+    <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
 
-      <div className="flex gap-3 mb-4">
+      <div className="w-full max-w-xl bg-zinc-900 border border-zinc-800 rounded-xl p-8 shadow-xl">
+
+        <h1 className="text-3xl font-bold mb-2 text-orange-400">
+          Stacks Guestbook
+        </h1>
+
+        <p className="text-zinc-400 mb-6">
+          Leave a message on the Stacks blockchain
+        </p>
+
         <button
           onClick={handleConnect}
           disabled={isBusy}
-          className="border rounded px-4 py-2 disabled:opacity-50"
+          className="mb-6 w-full bg-orange-500 hover:bg-orange-600 text-black font-semibold py-3 rounded-lg transition"
         >
-          {isBusy ? "Please wait..." : "Connect wallet"}
+          Connect Wallet
         </button>
-      </div>
 
-      <div className="flex gap-3 mb-4">
-        <input
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Write a message"
-          className="border rounded px-3 py-2 w-full max-w-md"
-          disabled={isBusy}
-        />
-        <button
-          onClick={handleSendMessage}
-          disabled={isBusy}
-          className="border rounded px-4 py-2 disabled:opacity-50"
-        >
-          Send
-        </button>
-      </div>
+        <div className="flex gap-3 mb-4">
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Write your message..."
+            maxLength={280}
+            disabled={isBusy}
+            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-orange-500"
+          />
 
-      {status && <p>{status}</p>}
-    </main>
+          <button
+            onClick={handleSendMessage}
+            disabled={isBusy}
+            className="bg-orange-500 hover:bg-orange-600 text-black font-semibold px-5 rounded-lg transition"
+          >
+            Send
+          </button>
+        </div>
+
+        {status && (
+          <div className="mt-4 text-sm text-orange-400">
+            {status}
+          </div>
+        )}
+
+      </div>
+    </div>
   );
 }
