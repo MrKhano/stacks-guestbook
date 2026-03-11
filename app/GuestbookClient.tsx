@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-// garde ici seulement les imports nécessaires au wallet / stacks
-// exemple :
 import { connect, request } from "@stacks/connect";
 
 export default function GuestbookClient() {
-  const [status, setStatus] = useState("");
+  const [mounted, setMounted] = useState(false);
   const [message, setMessage] = useState("");
-  const [isReady, setIsReady] = useState(false);
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
-    setIsReady(true);
+    setMounted(true);
   }, []);
 
   async function handleConnect() {
@@ -54,10 +52,10 @@ export default function GuestbookClient() {
     }
   }
 
-  if (!isReady) {
+  if (!mounted) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6">
-        <p>Loading...</p>
+        <p>Loading guestbook...</p>
       </main>
     );
   }
@@ -67,7 +65,7 @@ export default function GuestbookClient() {
       <h1 className="text-3xl font-bold mb-6">Stacks Guestbook</h1>
 
       <div className="flex gap-3 mb-4">
-        <button onClick={handleConnect} className="border px-4 py-2 rounded">
+        <button onClick={handleConnect} className="border rounded px-4 py-2">
           Connect wallet
         </button>
       </div>
@@ -77,9 +75,9 @@ export default function GuestbookClient() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Write a message"
-          className="border px-3 py-2 rounded w-full max-w-md"
+          className="border rounded px-3 py-2 w-full max-w-md"
         />
-        <button onClick={handleSendMessage} className="border px-4 py-2 rounded">
+        <button onClick={handleSendMessage} className="border rounded px-4 py-2">
           Send
         </button>
       </div>
