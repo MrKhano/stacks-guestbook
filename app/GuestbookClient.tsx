@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { stringUtf8CV } from "@stacks/transactions";
+import { stringAsciiCV } from "@stacks/transactions";
 
 export default function GuestbookClient() {
   const [mounted, setMounted] = useState(false);
@@ -58,7 +58,7 @@ export default function GuestbookClient() {
       const result = await request("stx_callContract", {
         contract: `${contractAddress}.${contractName}`,
         functionName: "add-message",
-        functionArgs: [stringUtf8CV(message.trim())],
+        functionArgs: [stringAsciiCV(message.trim())]
         network: "mainnet",
       });
 
