@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { connect, request } from "@stacks/connect";
 
 export default function GuestbookClient() {
   const [mounted, setMounted] = useState(false);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -14,19 +14,28 @@ export default function GuestbookClient() {
 
   async function handleConnect() {
     try {
+      setIsBusy(true);
       setStatus("");
+
+      const stacksConnect = await import("@stacks/connect");
+      const { connect } = stacksConnect;
+
       await connect({
         forceWalletSelect: true,
       });
+
       setStatus("Wallet connected.");
     } catch (error) {
-      console.error(error);
+      console.error("Connect error:", error);
       setStatus("Connection failed or request rejected.");
+    } finally {
+      setIsBusy(false);
     }
   }
 
   async function handleSendMessage() {
     try {
+      setIsBusy(true);
       setStatus("");
 
       const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
@@ -37,18 +46,29 @@ export default function GuestbookClient() {
         return;
       }
 
+      if (!message.trim()) {
+        setStatus("Please enter a message.");
+        return;
+      }
+
+      const stacksConnect = await import("@stacks/connect");
+      const { request } = stacksConnect;
+
       const result = await request("stx_callContract", {
         contract: `${contractAddress}.${contractName}`,
         functionName: "add-message",
-        functionArgs: [message],
+        functionArgs: [message.trim()],
         network: "testnet",
       });
 
-      console.log(result);
+      console.log("Transaction result:", result);
       setStatus("Transaction submitted.");
+      setMessage("");
     } catch (error) {
-      console.error(error);
+      console.error("Transaction error:", error);
       setStatus("Transaction failed.");
+    } finally {
+      setIsBusy(false);
     }
   }
 
@@ -65,8 +85,12 @@ export default function GuestbookClient() {
       <h1 className="text-3xl font-bold mb-6">Stacks Guestbook</h1>
 
       <div className="flex gap-3 mb-4">
-        <button onClick={handleConnect} className="border rounded px-4 py-2">
-          Connect wallet
+        <button
+          onClick={handleConnect}
+          disabled={isBusy}
+          className="border rounded px-4 py-2 disabled:opacity-50"
+        >
+          {isBusy ? "Please wait..." : "Connect wallet"}
         </button>
       </div>
 
@@ -76,8 +100,13 @@ export default function GuestbookClient() {
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Write a message"
           className="border rounded px-3 py-2 w-full max-w-md"
+          disabled={isBusy}
         />
-        <button onClick={handleSendMessage} className="border rounded px-4 py-2">
+        <button
+          onClick={handleSendMessage}
+          disabled={isBusy}
+          className="border rounded px-4 py-2 disabled:opacity-50"
+        >
           Send
         </button>
       </div>
