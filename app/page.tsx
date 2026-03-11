@@ -1,9 +1,5 @@
-import dynamic from "next/dynamic";
-
-const GuestbookClient = dynamic(() => import("./GuestbookClient"), {
-  ssr: false,
-});
+import GuestbookShell from "./GuestbookShell";
 
 export default function Page() {
-  return <GuestbookClient />;
+  return <GuestbookShell />;
 }
